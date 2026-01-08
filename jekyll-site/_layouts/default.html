@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if page.title %}{{ page.title }} - {% endif %}{{ site.title }}</title>
+    <meta name="description" content="{{ page.description | default: site.description }}">
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ '/assets/css/main.css' | relative_url }}">
+
+    <!-- D3.js for charts and graphs -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+</head>
+<body>
+    <header class="site-header">
+        <div class="container">
+            <h1 class="site-title">
+                <a href="{{ '/' | relative_url }}">{{ site.title }}</a>
+            </h1>
+            <nav class="site-nav">
+                <a href="{{ '/' | relative_url }}" {% if page.url == '/' %}class="active"{% endif %}>Home</a>
+                <a href="{{ '/nodes/' | relative_url }}" {% if page.url contains '/nodes' %}class="active"{% endif %}>Nodes</a>
+                <a href="{{ '/map/' | relative_url }}" {% if page.url contains '/map' %}class="active"{% endif %}>Map</a>
+                <a href="{{ '/traceroutes/' | relative_url }}" {% if page.url contains '/traceroutes' %}class="active"{% endif %}>Traceroutes</a>
+                <a href="{{ '/topography/' | relative_url }}" {% if page.url contains '/topography' %}class="active"{% endif %}>Topography</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="site-content">
+        <div class="container">
+            {{ content }}
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <div class="container">
+            <p>&copy; 2026 {{ site.title }}. Powered by Federated Meshtastic.</p>
+            <p class="footer-links">
+                <a href="https://meshtastic.org" target="_blank">Meshtastic</a> |
+                <a href="https://github.com" target="_blank">GitHub</a>
+            </p>
+        </div>
+    </footer>
+
+    <!-- API Configuration -->
+    <script>
+        window.API_BASE_URL = '{{ site.api_url }}';
+    </script>
+
+    <!-- Core JavaScript modules -->
+    <script src="{{ '/assets/js/api.js' | relative_url }}"></script>
+    {% if page.include_map %}
+    <script src="{{ '/assets/js/map.js' | relative_url }}"></script>
+    {% endif %}
+    {% if page.include_topology %}
+    <script src="{{ '/assets/js/topology.js' | relative_url }}"></script>
+    {% endif %}
+    {% if page.include_charts %}
+    <script src="{{ '/assets/js/charts.js' | relative_url }}"></script>
+    {% endif %}
+    {% if page.include_table %}
+    <script src="{{ '/assets/js/table.js' | relative_url }}"></script>
+    {% endif %}
+</body>
+</html>

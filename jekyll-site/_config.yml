@@ -1,0 +1,40 @@
+title: Meshtastic Network Explorer
+description: Public explorer for federated Meshtastic network data
+baseurl: ""
+url: "https://your-domain.github.io"
+
+# Build settings
+markdown: kramdown
+theme: minima
+
+# Permalink style
+permalink: pretty
+
+# Exclude from build
+exclude:
+  - README.md
+  - Gemfile
+  - Gemfile.lock
+  - node_modules
+  - vendor
+
+# Collections
+collections:
+  nodes:
+    output: true
+    permalink: /nodes/:name/
+
+# API configuration
+api_url: "https://your-app.fly.dev"
+
+# Map settings
+map:
+  default_center: [37.0902, -95.7129]  # Geographic center of US
+  default_zoom: 5
+  tile_server: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+
+# Privacy settings
+privacy:
+  coordinate_precision: 3  # Decimal places for coordinate rounding (3 = ~100m)
+  hide_private_messages: true

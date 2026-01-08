@@ -1,0 +1,71 @@
+---
+layout: default
+title: Network Topography
+include_topology: true
+---
+
+<h1>Network Topography</h1>
+
+<div class="filters">
+    <div class="filter-group">
+        <label for="topology-hours">Time Window</label>
+        <select id="topology-hours" onchange="refreshTopology()">
+            <option value="1">Last Hour</option>
+            <option value="6">Last 6 Hours</option>
+            <option value="24" selected>Last 24 Hours</option>
+            <option value="72">Last 3 Days</option>
+            <option value="168">Last Week</option>
+        </select>
+    </div>
+    <div class="filter-group">
+        <label>&nbsp;</label>
+        <span id="topology-stats" style="font-size: 0.875rem; color: var(--gray-600);"></span>
+    </div>
+</div>
+
+<div class="card">
+    <div id="topology-graph"></div>
+</div>
+
+<div class="card">
+    <h2 class="card-title">Graph Legend</h2>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+        <div>
+            <h3 style="font-size: 1rem; margin-bottom: 0.5rem;">Node Size</h3>
+            <p style="font-size: 0.875rem;">Larger nodes = more relay activity</p>
+        </div>
+        <div>
+            <h3 style="font-size: 1rem; margin-bottom: 0.5rem;">Link Color</h3>
+            <div style="font-size: 0.875rem;">
+                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
+                    <div style="width: 30px; height: 2px; background: #22c55e;"></div>
+                    <span>Strong signal (&gt; -80 dBm)</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
+                    <div style="width: 30px; height: 2px; background: #eab308;"></div>
+                    <span>Medium signal (-80 to -100 dBm)</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <div style="width: 30px; height: 2px; background: #ef4444;"></div>
+                    <span>Weak signal (&lt; -100 dBm)</span>
+                </div>
+            </div>
+        </div>
+        <div>
+            <h3 style="font-size: 1rem; margin-bottom: 0.5rem;">Interaction</h3>
+            <p style="font-size: 0.875rem;">
+                Drag to pan<br>
+                Scroll to zoom<br>
+                Drag nodes to reposition
+            </p>
+        </div>
+    </div>
+</div>
+
+<script>
+// This will be initialized by topology.js
+window.topologyConfig = {
+    elementId: 'topology-graph',
+    initialHours: 24
+};
+</script>

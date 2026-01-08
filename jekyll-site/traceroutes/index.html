@@ -1,0 +1,277 @@
+---
+layout: default
+title: Traceroutes
+include_charts: true
+---
+
+<h1>Traceroute Explorer</h1>
+
+<div class="filters">
+    <div class="filter-group">
+        <label for="filter-source">Source Node</label>
+        <input type="text" id="filter-source" placeholder="Source node ID...">
+    </div>
+    <div class="filter-group">
+        <label for="filter-dest">Destination Node</label>
+        <input type="text" id="filter-dest" placeholder="Destination node ID...">
+    </div>
+    <div class="filter-group">
+        <label>&nbsp;</label>
+        <button class="btn btn-primary" onclick="applyFilters()">Apply</button>
+        <button class="btn btn-secondary" onclick="resetFilters()">Reset</button>
+    </div>
+</div>
+
+<div class="card">
+    <h2 class="card-title">Traceroute List</h2>
+    <div id="traces-count" class="mb-2"></div>
+    <div class="table-container">
+        <table id="traces-table">
+            <thead>
+                <tr>
+                    <th>Trace ID</th>
+                    <th>Source</th>
+                    <th>Destination</th>
+                    <th>Hops</th>
+                    <th>First Seen</th>
+                    <th>Last Seen</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="traces-body">
+                <tr><td colspan="7">Loading...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Trace Detail Modal -->
+<div id="trace-detail-modal" style="display: none;">
+    <div class="card">
+        <h2 class="card-title">Trace Details <button class="btn btn-secondary" style="float: right;" onclick="closeTraceDetail()">Close</button></h2>
+        <div id="trace-detail-content">
+            Loading...
+        </div>
+    </div>
+</div>
+
+<script>
+let allTraces = [];
+
+// Load traceroutes from API
+async function loadTraceroutes(params = {}) {
+    try {
+        window.MeshtasticUtils.showLoading('traces-body');
+
+        const response = await window.meshtasticAPI.getTraceroutes(params);
+        allTraces = response.traces || [];
+
+        displayTraces();
+    } catch (error) {
+        console.error('Error loading traceroutes:', error);
+        window.MeshtasticUtils.showError('traces-body', 'Failed to load traceroutes');
+    }
+}
+
+// Display traceroutes table
+function displayTraces() {
+    const tbody = document.getElementById('traces-body');
+
+    if (allTraces.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7">No traceroutes found</td></tr>';
+        document.getElementById('traces-count').innerHTML = '';
+        return;
+    }
+
+    document.getElementById('traces-count').innerHTML = `<p>Found ${allTraces.length} traceroutes</p>`;
+
+    tbody.innerHTML = allTraces.map(trace => `
+        <tr>
+            <td><span class="node-id">${window.MeshtasticUtils.truncateNodeId(trace.trace_id, 12)}</span></td>
+            <td><span class="node-id">${window.MeshtasticUtils.truncateNodeId(trace.source_node, 10)}</span></td>
+            <td><span class="node-id">${window.MeshtasticUtils.truncateNodeId(trace.dest_node, 10)}</span></td>
+            <td>${trace.hop_count}</td>
+            <td>${window.MeshtasticUtils.formatRelativeTime(trace.first_seen)}</td>
+            <td>${window.MeshtasticUtils.formatRelativeTime(trace.last_seen)}</td>
+            <td><button class="btn btn-primary btn-sm" onclick="viewTraceDetail('${trace.trace_id}')">View</button></td>
+        </tr>
+    `).join('');
+}
+
+// Apply filters
+function applyFilters() {
+    const sourceNode = document.getElementById('filter-source').value.trim();
+    const destNode = document.getElementById('filter-dest').value.trim();
+
+    const params = {};
+    if (sourceNode) params.source_node = sourceNode;
+    if (destNode) params.dest_node = destNode;
+
+    loadTraceroutes(params);
+}
+
+// Reset filters
+function resetFilters() {
+    document.getElementById('filter-source').value = '';
+    document.getElementById('filter-dest').value = '';
+    loadTraceroutes();
+}
+
+// View trace detail
+async function viewTraceDetail(traceId) {
+    const modal = document.getElementById('trace-detail-modal');
+    const content = document.getElementById('trace-detail-content');
+
+    modal.style.display = 'block';
+    content.innerHTML = '<div class="loading">Loading trace details...</div>';
+
+    try {
+        const trace = await window.meshtasticAPI.getTraceroute(traceId);
+
+        let html = `
+            <div class="mb-2">
+                <p><strong>Trace ID:</strong> <span class="node-id">${trace.trace_id}</span></p>
+                <p><strong>Source:</strong> <span class="node-id">${trace.source_node}</span></p>
+                <p><strong>Destination:</strong> <span class="node-id">${trace.dest_node}</span></p>
+                <p><strong>Total Hops:</strong> ${trace.hops.length}</p>
+            </div>
+
+            <h3>Hop Sequence</h3>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Hop #</th>
+                            <th>Node ID</th>
+                            <th>RSSI</th>
+                            <th>SNR</th>
+                            <th>Observed At</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+
+        trace.hops.forEach(hop => {
+            html += `
+                <tr>
+                    <td>${hop.hop_number + 1}</td>
+                    <td><span class="node-id">${hop.hop_node}</span></td>
+                    <td>${window.MeshtasticUtils.formatRSSI(hop.rssi)}</td>
+                    <td>${window.MeshtasticUtils.formatSNR(hop.snr)}</td>
+                    <td>${window.MeshtasticUtils.formatTimestamp(hop.observed_at)}</td>
+                </tr>
+            `;
+        });
+
+        html += `
+                    </tbody>
+                </table>
+            </div>
+        `;
+
+        // Add signal quality visualization if D3 is available
+        if (window.d3 && trace.hops.some(h => h.rssi !== null)) {
+            html += '<h3 class="mt-3">Signal Quality Chart</h3>';
+            html += '<div id="signal-chart"></div>';
+        }
+
+        content.innerHTML = html;
+
+        // Draw signal chart
+        if (window.d3 && trace.hops.some(h => h.rssi !== null)) {
+            drawSignalChart(trace.hops);
+        }
+
+    } catch (error) {
+        console.error('Error loading trace detail:', error);
+        content.innerHTML = '<div class="error">Failed to load trace details</div>';
+    }
+}
+
+// Close trace detail modal
+function closeTraceDetail() {
+    document.getElementById('trace-detail-modal').style.display = 'none';
+}
+
+// Draw signal quality chart using D3
+function drawSignalChart(hops) {
+    const container = document.getElementById('signal-chart');
+    const width = container.offsetWidth || 800;
+    const height = 200;
+    const margin = { top: 20, right: 30, bottom: 40, left: 50 };
+
+    const svg = d3.select('#signal-chart')
+        .append('svg')
+        .attr('width', width)
+        .attr('height', height);
+
+    const data = hops.filter(h => h.rssi !== null).map((h, i) => ({
+        hop: h.hop_number,
+        rssi: h.rssi,
+        snr: h.snr
+    }));
+
+    if (data.length === 0) return;
+
+    const x = d3.scaleLinear()
+        .domain([0, d3.max(data, d => d.hop)])
+        .range([margin.left, width - margin.right]);
+
+    const y = d3.scaleLinear()
+        .domain([d3.min(data, d => d.rssi) - 5, d3.max(data, d => d.rssi) + 5])
+        .range([height - margin.bottom, margin.top]);
+
+    // Add axes
+    svg.append('g')
+        .attr('transform', `translate(0,${height - margin.bottom})`)
+        .call(d3.axisBottom(x).ticks(data.length));
+
+    svg.append('g')
+        .attr('transform', `translate(${margin.left},0)`)
+        .call(d3.axisLeft(y));
+
+    // Add line
+    const line = d3.line()
+        .x(d => x(d.hop))
+        .y(d => y(d.rssi));
+
+    svg.append('path')
+        .datum(data)
+        .attr('fill', 'none')
+        .attr('stroke', '#3b82f6')
+        .attr('stroke-width', 2)
+        .attr('d', line);
+
+    // Add points
+    svg.selectAll('circle')
+        .data(data)
+        .enter()
+        .append('circle')
+        .attr('cx', d => x(d.hop))
+        .attr('cy', d => y(d.rssi))
+        .attr('r', 4)
+        .attr('fill', '#3b82f6');
+
+    // Add labels
+    svg.append('text')
+        .attr('x', width / 2)
+        .attr('y', height - 5)
+        .attr('text-anchor', 'middle')
+        .style('font-size', '12px')
+        .text('Hop Number');
+
+    svg.append('text')
+        .attr('transform', 'rotate(-90)')
+        .attr('x', -height / 2)
+        .attr('y', 15)
+        .attr('text-anchor', 'middle')
+        .style('font-size', '12px')
+        .text('RSSI (dBm)');
+}
+
+// Load traceroutes on page load
+loadTraceroutes();
+
+// Auto-refresh every 60 seconds
+setInterval(() => loadTraceroutes(), 60000);
+</script>

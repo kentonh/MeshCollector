@@ -1,0 +1,116 @@
+---
+layout: default
+title: Dashboard
+include_charts: true
+---
+
+<h1>Meshtastic Network Dashboard</h1>
+
+<div class="card-grid" id="stats-cards">
+    <div class="stat-card">
+        <span class="stat-value" id="active-nodes">-</span>
+        <span class="stat-label">Active Nodes (24h)</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-value" id="nodes-with-position">-</span>
+        <span class="stat-label">Nodes with Position</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-value" id="total-packets">-</span>
+        <span class="stat-label">Packets (24h)</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-value" id="total-collectors">-</span>
+        <span class="stat-label">Collectors</span>
+    </div>
+</div>
+
+<div class="card">
+    <h2 class="card-title">Top Relay Nodes</h2>
+    <div class="table-container">
+        <table id="top-relays-table">
+            <thead>
+                <tr>
+                    <th>Node ID</th>
+                    <th>Relay Count</th>
+                </tr>
+            </thead>
+            <tbody id="top-relays-body">
+                <tr><td colspan="2">Loading...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card">
+    <h2 class="card-title">Collector Health</h2>
+    <div class="table-container">
+        <table id="collectors-table">
+            <thead>
+                <tr>
+                    <th>Collector ID</th>
+                    <th>Last Report</th>
+                    <th>Packets Received</th>
+                    <th>Unique Nodes</th>
+                </tr>
+            </thead>
+            <tbody id="collectors-body">
+                <tr><td colspan="4">Loading...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+// Load dashboard data
+async function loadDashboard() {
+    try {
+        const stats = await window.meshtasticAPI.getNetworkStats(24);
+
+        // Update stat cards
+        document.getElementById('active-nodes').textContent = stats.active_nodes.toLocaleString();
+        document.getElementById('nodes-with-position').textContent = stats.nodes_with_position.toLocaleString();
+        document.getElementById('total-packets').textContent = stats.total_packets.toLocaleString();
+        document.getElementById('total-collectors').textContent = stats.collectors.length;
+
+        // Update top relay nodes table
+        const relaysBody = document.getElementById('top-relays-body');
+        if (stats.top_relay_nodes && stats.top_relay_nodes.length > 0) {
+            relaysBody.innerHTML = stats.top_relay_nodes.map(relay => `
+                <tr>
+                    <td><span class="node-id">${relay.node_id}</span></td>
+                    <td>${relay.relay_count.toLocaleString()}</td>
+                </tr>
+            `).join('');
+        } else {
+            relaysBody.innerHTML = '<tr><td colspan="2">No relay data available</td></tr>';
+        }
+
+        // Update collectors table
+        const collectorsBody = document.getElementById('collectors-body');
+        if (stats.collectors && stats.collectors.length > 0) {
+            collectorsBody.innerHTML = stats.collectors.map(collector => `
+                <tr>
+                    <td><strong>${collector.collector_id}</strong></td>
+                    <td>${window.MeshtasticUtils.formatRelativeTime(collector.last_report)}</td>
+                    <td>${(collector.packets_rx || 0).toLocaleString()}</td>
+                    <td>${(collector.unique_nodes || 0).toLocaleString()}</td>
+                </tr>
+            `).join('');
+        } else {
+            collectorsBody.innerHTML = '<tr><td colspan="4">No collector data available</td></tr>';
+        }
+
+    } catch (error) {
+        console.error('Error loading dashboard:', error);
+        document.getElementById('stats-cards').innerHTML =
+            '<div class="error">Failed to load dashboard data. Please try again later.</div>';
+    }
+}
+
+// Load dashboard on page load
+loadDashboard();
+
+// Auto-refresh every 30 seconds
+setInterval(loadDashboard, 30000);
+</script>

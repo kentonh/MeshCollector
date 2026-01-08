@@ -1,0 +1,240 @@
+---
+layout: default
+title: Nodes
+include_table: true
+---
+
+<h1>Network Nodes</h1>
+
+<div class="filters">
+    <div class="filter-group">
+        <label for="filter-search">Search</label>
+        <input type="text" id="filter-search" placeholder="Node ID or name...">
+    </div>
+    <div class="filter-group">
+        <label for="filter-position">Position</label>
+        <select id="filter-position">
+            <option value="">All</option>
+            <option value="true">With Position</option>
+            <option value="false">Without Position</option>
+        </select>
+    </div>
+    <div class="filter-group">
+        <label for="filter-hardware">Hardware</label>
+        <select id="filter-hardware">
+            <option value="">All Hardware</option>
+        </select>
+    </div>
+    <div class="filter-group">
+        <label for="filter-status">Status</label>
+        <select id="filter-status">
+            <option value="">All Status</option>
+            <option value="online">Online</option>
+            <option value="recent">Recent</option>
+            <option value="stale">Stale</option>
+            <option value="offline">Offline</option>
+        </select>
+    </div>
+    <div class="filter-group">
+        <label>&nbsp;</label>
+        <button class="btn btn-primary" onclick="applyFilters()">Apply</button>
+        <button class="btn btn-secondary" onclick="resetFilters()">Reset</button>
+    </div>
+</div>
+
+<div class="card">
+    <div id="nodes-count" class="mb-2"></div>
+    <div class="table-container">
+        <table id="nodes-table">
+            <thead>
+                <tr>
+                    <th>Status</th>
+                    <th>Node ID</th>
+                    <th>Name</th>
+                    <th>Hardware</th>
+                    <th>Role</th>
+                    <th>Last Seen</th>
+                    <th>Battery</th>
+                    <th>Position</th>
+                </tr>
+            </thead>
+            <tbody id="nodes-body">
+                <tr><td colspan="8">Loading...</td></tr>
+            </tbody>
+        </table>
+    </div>
+    <div class="pagination" id="pagination"></div>
+</div>
+
+<script>
+let allNodes = [];
+let filteredNodes = [];
+let currentPage = 0;
+const nodesPerPage = 50;
+
+// Load nodes from API
+async function loadNodes() {
+    try {
+        window.MeshtasticUtils.showLoading('nodes-body');
+
+        const response = await window.meshtasticAPI.getNodes({ limit: 1000 });
+        allNodes = response.nodes || [];
+
+        // Populate hardware filter
+        const hardwareSet = new Set(allNodes.map(n => n.hardware).filter(Boolean));
+        const hardwareSelect = document.getElementById('filter-hardware');
+        hardwareSelect.innerHTML = '<option value="">All Hardware</option>' +
+            Array.from(hardwareSet).sort().map(hw =>
+                `<option value="${hw}">${hw}</option>`
+            ).join('');
+
+        // Apply initial filters
+        applyFilters();
+    } catch (error) {
+        console.error('Error loading nodes:', error);
+        window.MeshtasticUtils.showError('nodes-body', 'Failed to load nodes');
+    }
+}
+
+// Apply filters
+function applyFilters() {
+    const searchTerm = document.getElementById('filter-search').value.toLowerCase();
+    const positionFilter = document.getElementById('filter-position').value;
+    const hardwareFilter = document.getElementById('filter-hardware').value;
+    const statusFilter = document.getElementById('filter-status').value;
+
+    filteredNodes = allNodes.filter(node => {
+        // Search filter
+        if (searchTerm) {
+            const matchesSearch = (node.node_id && node.node_id.toLowerCase().includes(searchTerm)) ||
+                                 (node.short_name && node.short_name.toLowerCase().includes(searchTerm)) ||
+                                 (node.long_name && node.long_name.toLowerCase().includes(searchTerm));
+            if (!matchesSearch) return false;
+        }
+
+        // Position filter
+        if (positionFilter) {
+            const hasPosition = node.latitude !== null && node.longitude !== null;
+            if (positionFilter === 'true' && !hasPosition) return false;
+            if (positionFilter === 'false' && hasPosition) return false;
+        }
+
+        // Hardware filter
+        if (hardwareFilter && node.hardware !== hardwareFilter) {
+            return false;
+        }
+
+        // Status filter
+        if (statusFilter) {
+            const nodeStatus = window.MeshtasticUtils.getNodeStatus(node.last_seen);
+            if (nodeStatus !== statusFilter) return false;
+        }
+
+        return true;
+    });
+
+    currentPage = 0;
+    displayNodes();
+}
+
+// Reset filters
+function resetFilters() {
+    document.getElementById('filter-search').value = '';
+    document.getElementById('filter-position').value = '';
+    document.getElementById('filter-hardware').value = '';
+    document.getElementById('filter-status').value = '';
+    applyFilters();
+}
+
+// Display nodes for current page
+function displayNodes() {
+    const start = currentPage * nodesPerPage;
+    const end = start + nodesPerPage;
+    const pageNodes = filteredNodes.slice(start, end);
+
+    const tbody = document.getElementById('nodes-body');
+
+    if (pageNodes.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8">No nodes found</td></tr>';
+        document.getElementById('pagination').innerHTML = '';
+        document.getElementById('nodes-count').innerHTML = '';
+        return;
+    }
+
+    // Update count
+    document.getElementById('nodes-count').innerHTML =
+        `<p>Showing ${start + 1}-${Math.min(end, filteredNodes.length)} of ${filteredNodes.length} nodes</p>`;
+
+    // Render table rows
+    tbody.innerHTML = pageNodes.map(node => {
+        const status = window.MeshtasticUtils.getNodeStatus(node.last_seen);
+        const statusLabel = window.MeshtasticUtils.getStatusLabel(status);
+
+        return `
+            <tr>
+                <td><span class="status-badge status-${status}">${statusLabel}</span></td>
+                <td><span class="node-id">${node.node_id}</span></td>
+                <td>${node.short_name || node.long_name || '-'}</td>
+                <td>${node.hardware || '-'}</td>
+                <td>${node.role || '-'}</td>
+                <td>${window.MeshtasticUtils.formatRelativeTime(node.last_seen)}</td>
+                <td>${window.MeshtasticUtils.formatBattery(node.battery_level)}</td>
+                <td>${node.latitude && node.longitude ?
+                    `${node.latitude.toFixed(4)}, ${node.longitude.toFixed(4)}` : '-'}</td>
+            </tr>
+        `;
+    }).join('');
+
+    // Render pagination
+    renderPagination();
+}
+
+// Render pagination controls
+function renderPagination() {
+    const totalPages = Math.ceil(filteredNodes.length / nodesPerPage);
+    if (totalPages <= 1) {
+        document.getElementById('pagination').innerHTML = '';
+        return;
+    }
+
+    const pagination = document.getElementById('pagination');
+    let html = '';
+
+    // Previous button
+    html += `<button onclick="changePage(${currentPage - 1})" ${currentPage === 0 ? 'disabled' : ''}>Previous</button>`;
+
+    // Page numbers
+    for (let i = 0; i < totalPages; i++) {
+        if (i === 0 || i === totalPages - 1 || (i >= currentPage - 2 && i <= currentPage + 2)) {
+            html += `<button onclick="changePage(${i})" ${i === currentPage ? 'class="active"' : ''}>${i + 1}</button>`;
+        } else if (i === currentPage - 3 || i === currentPage + 3) {
+            html += '<span>...</span>';
+        }
+    }
+
+    // Next button
+    html += `<button onclick="changePage(${currentPage + 1})" ${currentPage >= totalPages - 1 ? 'disabled' : ''}>Next</button>`;
+
+    pagination.innerHTML = html;
+}
+
+// Change page
+function changePage(page) {
+    const totalPages = Math.ceil(filteredNodes.length / nodesPerPage);
+    if (page >= 0 && page < totalPages) {
+        currentPage = page;
+        displayNodes();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+}
+
+// Debounced search
+const debouncedSearch = window.MeshtasticUtils.debounce(applyFilters, 300);
+document.getElementById('filter-search').addEventListener('input', debouncedSearch);
+
+// Load nodes on page load
+loadNodes();
+
+// Auto-refresh every 60 seconds
+setInterval(loadNodes, 60000);
+</script>

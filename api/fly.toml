@@ -1,0 +1,39 @@
+# Fly.io configuration for Federated Meshtastic API
+
+app = "federated-meshtastic-api"
+primary_region = "ord"  # Change to your preferred region
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PORT = "8000"
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ["app"]
+
+  [http_service.concurrency]
+    type = "requests"
+    hard_limit = 250
+    soft_limit = 200
+
+[[http_service.checks]]
+  interval = "30s"
+  timeout = "5s"
+  grace_period = "10s"
+  method = "GET"
+  path = "/health"
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 512
+
+# Secrets to set via fly secrets:
+# - DATABASE_URL: PostgreSQL connection string
+# - COLLECTOR_TOKEN_<collector_id>: Token for each collector

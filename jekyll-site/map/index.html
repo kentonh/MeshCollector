@@ -1,0 +1,68 @@
+---
+layout: default
+title: Network Map
+include_map: true
+---
+
+<h1>Network Map</h1>
+
+<div class="filters">
+    <div class="filter-group">
+        <label for="map-hours">Time Window</label>
+        <select id="map-hours" onchange="refreshMap()">
+            <option value="1">Last Hour</option>
+            <option value="6">Last 6 Hours</option>
+            <option value="24" selected>Last 24 Hours</option>
+            <option value="72">Last 3 Days</option>
+            <option value="168">Last Week</option>
+        </select>
+    </div>
+    <div class="filter-group">
+        <label for="map-status-filter">Status Filter</label>
+        <select id="map-status-filter" onchange="filterMarkers()">
+            <option value="">All Status</option>
+            <option value="online">Online</option>
+            <option value="recent">Recent</option>
+            <option value="stale">Stale</option>
+            <option value="offline">Offline</option>
+        </select>
+    </div>
+    <div class="filter-group">
+        <label>&nbsp;</label>
+        <span id="node-count" class="text-muted"></span>
+    </div>
+</div>
+
+<div class="card">
+    <div id="map"></div>
+</div>
+
+<div class="card">
+    <h2 class="card-title">Map Legend</h2>
+    <div style="display: flex; gap: 2rem; flex-wrap: wrap;">
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span class="status-badge status-online">Online</span>
+            <span>Last seen &lt; 5 minutes</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span class="status-badge status-recent">Recent</span>
+            <span>Last seen &lt; 1 hour</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span class="status-badge status-stale">Stale</span>
+            <span>Last seen &lt; 24 hours</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span class="status-badge status-offline">Offline</span>
+            <span>Last seen &gt; 24 hours</span>
+        </div>
+    </div>
+</div>
+
+<script>
+// This script will be initialized by map.js
+window.mapConfig = {
+    mapElementId: 'map',
+    initialHours: 24
+};
+</script>

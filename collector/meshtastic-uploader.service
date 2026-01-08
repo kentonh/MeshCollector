@@ -1,0 +1,29 @@
+[Unit]
+Description=Meshtastic Collector Uploader
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+Group=pi
+WorkingDirectory=/home/pi/meshtastic-collector
+Environment="COLLECTOR_TOKEN=your-secret-token-here"
+ExecStart=/usr/bin/python3 /home/pi/meshtastic-collector/uploader.py \
+    --api-url https://your-app.fly.dev \
+    --collector-id wichita-01 \
+    --db-path /home/pi/meshtastic-collector/collector.sqlite \
+    --batch-size 500 \
+    --poll-interval 5
+
+# Restart policy
+Restart=always
+RestartSec=10
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=meshtastic-uploader
+
+[Install]
+WantedBy=multi-user.target
